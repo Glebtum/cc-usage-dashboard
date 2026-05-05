@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claude Code Usage</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='50%25' y='52%25' dominant-baseline='middle' text-anchor='middle' font-family='system-ui,sans-serif' font-weight='800' font-size='22' fill='%23000'%3E%24%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --muted-2: #9ca3af;
+    --accent: #2563eb;
+    --accent-2: #f59e0b;
+    --bar-bg: #f3f4f6;
+    --hover: #eff6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+  }
+  h1 { font-size: 18px; margin: 0 0 16px; font-weight: 600; }
+  h2 { font-size: 12px; margin: 0 0 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  button, select, input[type=date] {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+  }
+  button:hover { border-color: var(--accent); }
+  button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .meta { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .stat-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    flex: 1;
+  }
+  .stat .v { font-size: 26px; font-weight: 600; }
+  .stat .l { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .bars { display: flex; flex-direction: column; gap: 4px; }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 200px 60px 1fr 60px;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+  .bar-row .name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-row .val { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-row .pct { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; font-size: 11px; }
+  .bar-row .bar { height: 6px; background: var(--accent); border-radius: 3px; }
+  .bar-row .bar.alt { background: var(--accent-2); }
+  .bar-bg { background: var(--bar-bg); border-radius: 3px; height: 6px; width: 100%; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th { color: var(--muted); font-weight: 500; text-align: left; padding: 8px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  th.num { text-align: right; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--accent); }
+  th.sorted::after { content: " ↓"; }
+  th.sorted.asc::after { content: " ↑"; }
+  td { padding: 8px; border-bottom: 1px solid var(--border); }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: var(--hover); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--bar-bg);
+    border-radius: 3px;
+    font-size: 11px;
+    margin-right: 4px;
+    color: var(--muted);
+  }
+  .pill.skill { background: rgba(37,99,235,0.1); color: var(--accent); }
+  .pill.agent { background: rgba(245,158,11,0.12); color: #b45309; }
+
+  .day-chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; margin-top: 8px; }
+  .day-col {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    cursor: pointer;
+    min-height: 1px;
+    opacity: 0.85;
+    position: relative;
+  }
+  .day-col .tip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 10;
+    line-height: 1.5;
+  }
+  .day-col:hover .tip { opacity: 1; }
+  .day-col:hover { opacity: 1; outline: 2px solid var(--accent); }
+  .day-col.active { outline: 2px solid var(--accent-2); }
+  .day-labels {
+    display: flex;
+    gap: 3px;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted-2);
+  }
+  .day-labels > div { flex: 1; text-align: center; }
+
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    width: 100%;
+    max-width: 1100px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+  .modal-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .turn { border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .turn:last-child { border: none; }
+  .turn-head { display: flex; gap: 12px; align-items: baseline; }
+  .turn-cost { font-size: 16px; font-weight: 600; color: var(--accent); min-width: 70px; }
+  .turn-meta { color: var(--muted); font-size: 11px; }
+  .turn-user {
+    margin-top: 6px;
+    background: var(--bar-bg);
+    padding: 8px 10px;
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 100px;
+    overflow: hidden;
+  }
+  .turn-bar { height: 6px; background: var(--accent); border-radius: 3px; margin-top: 6px; }
+  .turn-tools { margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .ctx-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    background: var(--bar-bg);
+    border-radius: 3px;
+    font-size: 10px;
+    margin-left: 6px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .ctx-pill.warn { background: rgba(245,158,11,0.15); color: #b45309; }
+  .ctx-pill.high { background: rgba(225,92,92,0.15); color: #b91c1c; }
+  .empty { color: var(--muted); padding: 16px; text-align: center; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>Claude Code Usage</h1>
+
+<div class="controls">
+  <button data-range="today" class="active">Today</button>
+  <button data-range="7">7 days</button>
+  <button data-range="30">30 days</button>
+  <button data-range="all">All</button>
+  <span class="meta" id="generated"></span>
+</div>
+
+<div class="stat-row">
+  <div class="stat"><div class="v" id="stat-cost">—</div><div class="l">total cost</div></div>
+  <div class="stat"><div class="v" id="stat-sessions">—</div><div class="l">sessions</div></div>
+  <div class="stat"><div class="v" id="stat-msgs">—</div><div class="l">assistant msgs</div></div>
+  <div class="stat"><div class="v" id="stat-cache">—</div><div class="l">cache reads</div></div>
+</div>
+
+<div class="panel" style="margin-bottom:16px">
+  <h2>Daily cost  <span style="color:var(--muted-2);font-weight:normal;font-size:11px;text-transform:none;letter-spacing:0">click bar to filter</span></h2>
+  <div class="day-chart" id="day-chart"></div>
+  <div class="day-labels" id="day-labels"></div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>By skill <span style="color:var(--muted-2);font-weight:normal;font-size:11px;text-transform:none;letter-spacing:0">main agent only · subagents below →</span></h2>
+    <div class="bars" id="skill-bars"></div>
+  </div>
+  <div class="panel">
+    <h2>By subagent <span style="color:var(--muted-2);font-weight:normal;font-size:11px;text-transform:none;letter-spacing:0">% of subagent total</span></h2>
+    <div class="bars" id="agent-bars"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Sessions <span style="color:var(--muted-2);font-weight:normal;font-size:11px;text-transform:none;letter-spacing:0">click for breakdown</span></h2>
+  <table>
+    <thead>
+      <tr>
+        <th class="sortable" data-sort="date">When</th>
+        <th>Title</th>
+        <th class="num sortable sorted" data-sort="cost">$</th>
+        <th class="num sortable" data-sort="msgs">Msgs</th>
+        <th>Skills + agents</th>
+      </tr>
+    </thead>
+    <tbody id="session-rows"></tbody>
+  </table>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">×</button>
+    <h1 id="modal-title">—</h1>
+    <div class="meta" id="modal-meta" style="margin-bottom:12px"></div>
+    <h2>Top turns by cost</h2>
+    <div id="turn-list"></div>
+  </div>
+</div>
+
+<script>
+const fmt$ = n => "$" + (n>=10 ? n.toFixed(0) : n.toFixed(2));
+
+// Context-window limits per model (in tokens). Opus/Sonnet 4.x = 1M, Haiku 4.5 = 200k.
+const MODEL_LIMITS = {
+  "claude-opus-4-7":   1_000_000,
+  "claude-sonnet-4-6": 1_000_000,
+  "claude-haiku-4-5":    200_000,
+};
+const MODEL_SHORT = {
+  "claude-opus-4-7":   "Opus",
+  "claude-sonnet-4-6": "Sonnet",
+  "claude-haiku-4-5":  "Haiku",
+};
+
+function renderCtxPill(maxCtx, model) {
+  if (!maxCtx) return "";
+  const limit = MODEL_LIMITS[model] || 200_000;
+  const pct = Math.min(100, Math.round(maxCtx / limit * 100));
+  const cls = pct >= 75 ? "high" : pct >= 50 ? "warn" : "";
+  const short = MODEL_SHORT[model] || (model || "").replace("claude-", "");
+  const ctxK = maxCtx >= 1e6 ? (maxCtx/1e6).toFixed(1)+"M" : Math.round(maxCtx/1000)+"k";
+  return ` <span class="ctx-pill ${cls}">${short} ${ctxK} · ${pct}%</span>`;
+}
+const fmtBig = n => n>=1e9 ? (n/1e9).toFixed(1)+"B" : n>=1e6 ? (n/1e6).toFixed(1)+"M" : n>=1e3 ? (n/1e3).toFixed(1)+"k" : n.toString();
+const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+
+let DATA = null;
+let currentRange = "today"; // default today
+let pinnedDay = null;       // single-day filter when bar is clicked
+let sortKey = "cost";
+let sortAsc = false;
+
+async function load() {
+  const r = await fetch("./data.json?t=" + Date.now());
+  DATA = await r.json();
+  document.getElementById("generated").textContent =
+    "data: " + DATA.generated_at.replace("T"," ").slice(0,16)
+    + "  •  " + DATA.period.start + " → " + DATA.period.end;
+  render();
+}
+
+function inRange(date) {
+  if (pinnedDay) return date === pinnedDay;
+  const today = new Date().toISOString().slice(0,10);
+  if (currentRange === "today") return date === today;
+  if (currentRange === "all") return true;
+  const days = parseInt(currentRange,10);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days + 1);
+  return date >= cutoff.toISOString().slice(0,10);
+}
+
+function render() {
+  const sessions = DATA.sessions.filter(s => inRange(s.date));
+  const skillTot = {};
+  const agentTot = {};
+  let totalCost = 0, totalMsgs = 0, totalCache = 0;
+
+  for (const s of sessions) totalCost += s.cost;
+  for (const [date, byDay] of Object.entries(DATA.by_day)) {
+    if (!inRange(date)) continue;
+    totalMsgs += byDay.msgs;
+    totalCache += byDay.cr;
+  }
+  for (const [date, m] of Object.entries(DATA.day_skill)) {
+    if (!inRange(date)) continue;
+    for (const [k,v] of Object.entries(m)) skillTot[k] = (skillTot[k]||0) + v;
+  }
+  for (const [date, m] of Object.entries(DATA.day_agent)) {
+    if (!inRange(date)) continue;
+    for (const [k,v] of Object.entries(m)) agentTot[k] = (agentTot[k]||0) + v;
+  }
+
+  document.getElementById("stat-cost").textContent = fmt$(totalCost);
+  document.getElementById("stat-sessions").textContent = sessions.length;
+  document.getElementById("stat-msgs").textContent = totalMsgs.toLocaleString();
+  document.getElementById("stat-cache").textContent = fmtBig(totalCache);
+
+  renderDailyChart();
+  renderBars("skill-bars", skillTot, false);
+  renderBars("agent-bars", agentTot, true);
+  renderSessions(sessions);
+}
+
+function renderDailyChart() {
+  const days = Object.keys(DATA.by_day).sort();
+  const max = Math.max(...days.map(d => DATA.by_day[d].cost), 1);
+  const chart = document.getElementById("day-chart");
+  const labels = document.getElementById("day-labels");
+  chart.innerHTML = "";
+  labels.innerHTML = "";
+  for (const d of days) {
+    const dayData = DATA.by_day[d];
+    const v = dayData.cost;
+    // session count for this day
+    const dayCount = DATA.sessions.filter(s => s.date === d).length;
+    // top skill of the day
+    const ds = DATA.day_skill[d] || {};
+    const topSkill = Object.entries(ds).sort((a,b)=>b[1]-a[1])[0];
+    const col = document.createElement("div");
+    col.className = "day-col" + (pinnedDay === d ? " active" : "");
+    col.style.height = (Math.max(v / max * 100, 1)) + "%";
+    const tip = document.createElement("div");
+    tip.className = "tip";
+    tip.innerHTML =
+      `<b>${d}</b><br>` +
+      `${fmt$(v)}  •  ${dayCount} sessions  •  ${dayData.msgs.toLocaleString()} msgs<br>` +
+      (topSkill ? `top: ${esc(topSkill[0])} ${fmt$(topSkill[1])}` : "");
+    col.appendChild(tip);
+    col.onclick = () => {
+      pinnedDay = (pinnedDay === d) ? null : d;
+      render();
+    };
+    chart.appendChild(col);
+    const lbl = document.createElement("div");
+    lbl.textContent = d.slice(5);
+    labels.appendChild(lbl);
+  }
+}
+
+function renderBars(elId, data, alt) {
+  const el = document.getElementById(elId);
+  el.innerHTML = "";
+  const items = Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0, 15);
+  if (items.length === 0) {
+    el.innerHTML = '<div class="empty">No data</div>';
+    return;
+  }
+  // % within this table (sum of items shown)
+  const tableTotal = items.reduce((a,[,v])=>a+v, 0);
+  const max = Math.max(...items.map(([,v])=>v));
+  for (const [k,v] of items) {
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    const pct = tableTotal ? (v/tableTotal*100).toFixed(1) : "0.0";
+    row.innerHTML = `
+      <div class="name" title="${esc(k)}">${esc(k)}</div>
+      <div class="val">${fmt$(v)}</div>
+      <div class="bar-bg"><div class="bar ${alt?"alt":""}" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+      <div class="pct">${pct}%</div>`;
+    el.appendChild(row);
+  }
+}
+
+function fmtWhen(s) {
+  // DD/MM/YYYY HH:MM (start time only)
+  const [y,m,d] = s.date.split("-");
+  const date = `${d}/${m}/${y}`;
+  if (!s.first_ts) return date;
+  const start = s.first_ts.slice(11,16);
+  return `${date} ${start}`;
+}
+
+function sessionSortVal(s, key) {
+  switch (key) {
+    case "date": return (s.first_ts || s.date);
+    case "cost": return s.cost;
+    case "msgs": return s.msgs;
+  }
+  return 0;
+}
+
+function renderSessions(sessions) {
+  const tbody = document.getElementById("session-rows");
+  tbody.innerHTML = "";
+  // sort
+  sessions = sessions.slice().sort((a,b) => {
+    const va = sessionSortVal(a, sortKey);
+    const vb = sessionSortVal(b, sortKey);
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+  // header indicator
+  document.querySelectorAll("th.sortable").forEach(th => {
+    th.classList.remove("sorted","asc");
+    if (th.dataset.sort === sortKey) {
+      th.classList.add("sorted");
+      if (sortAsc) th.classList.add("asc");
+    }
+  });
+  if (sessions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No sessions in this range</td></tr>';
+    return;
+  }
+  sessions.slice(0, 200).forEach(s => {
+    const tr = document.createElement("tr");
+    tr.className = "clickable";
+    tr.onclick = () => showSession(s);
+    // collect skills: detected main_skill if real one not present, plus all observed
+    const realSkills = s.skills.filter(k => k && k !== "(no-skill)" && !k.startsWith("superpowers:"));
+    const showSkills = new Set(realSkills);
+    if (s.main_skill && s.main_skill !== "(no skill)" && s.main_skill !== "superpowers:using-superpowers") {
+      showSkills.add(s.main_skill);
+    }
+    const skillPills = [...showSkills].map(k => `<span class="pill skill">${esc(k)}</span>`).join("");
+    const agentPills = s.agents.map(k => `<span class="pill agent">@${esc(k)}</span>`).join("");
+    tr.innerHTML = `
+      <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${esc(fmtWhen(s))}</td>
+      <td>${esc(s.title)}</td>
+      <td class="num">${fmt$(s.cost)}</td>
+      <td class="num">${s.msgs}</td>
+      <td>${skillPills}${agentPills}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function showSession(s) {
+  document.getElementById("modal-title").textContent = s.title;
+  const skillsLabel = s.skills.filter(k=>k && k!=="(no-skill)").join(", ") || s.main_skill;
+  document.getElementById("modal-meta").textContent =
+    `${s.date}  •  ${fmt$(s.cost)} (${fmt$(s.subagent_cost)} subagents)  •  ${s.msgs} msgs  •  ${skillsLabel}`;
+  const turns = (DATA.turns[s.sid] || []).slice().sort((a,b) => b.cost - a.cost);
+  const list = document.getElementById("turn-list");
+  list.innerHTML = "";
+  if (turns.length === 0) {
+    list.innerHTML = '<div class="empty">No user-turns recorded for this session</div>';
+  } else {
+    const max = Math.max(...turns.map(t=>t.cost));
+    for (const t of turns.slice(0, 30)) {
+      const div = document.createElement("div");
+      div.className = "turn";
+      const tools = Object.entries(t.tools || {}).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${n}×${c}`).join(" ");
+      const ctxPill = renderCtxPill(t.max_ctx, t.model);
+      div.innerHTML = `
+        <div class="turn-head">
+          <div class="turn-cost">${fmt$(t.cost)}</div>
+          <div class="turn-meta">${t.msgs} msgs  •  ${t.ts ? t.ts.slice(11,16) : ""}${ctxPill}</div>
+        </div>
+        <div class="turn-bar" style="width:${(t.cost/max*100).toFixed(1)}%"></div>
+        <div class="turn-user">${esc(t.user)}</div>
+        ${tools ? `<div class="turn-tools">${esc(tools)}</div>` : ""}`;
+      list.appendChild(div);
+    }
+  }
+  document.getElementById("modal-bg").classList.add("show");
+}
+
+document.querySelectorAll("[data-range]").forEach(btn => {
+  btn.onclick = () => {
+    currentRange = btn.dataset.range;
+    pinnedDay = null;
+    document.querySelectorAll("[data-range]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  };
+});
+document.querySelectorAll("th.sortable").forEach(th => {
+  th.onclick = () => {
+    const key = th.dataset.sort;
+    if (sortKey === key) sortAsc = !sortAsc;
+    else { sortKey = key; sortAsc = false; }   // any new column starts descending (newest/biggest first)
+    render();
+  };
+});
+document.getElementById("modal-close").onclick = () => document.getElementById("modal-bg").classList.remove("show");
+document.getElementById("modal-bg").onclick = e => {
+  if (e.target.id === "modal-bg") document.getElementById("modal-bg").classList.remove("show");
+};
+
+load();
+</script>
+
+</body>
+</html>
