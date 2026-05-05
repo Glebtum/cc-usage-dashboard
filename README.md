@@ -1,52 +1,59 @@
 # Claude Code Usage Dashboard
 
-Local dashboard that reads your Claude Code transcripts (`~/.claude/projects/*.jsonl`)
-and visualizes spend by day, by skill, by subagent, and per-session breakdown.
+Локальный дашборд по тратам и активности в Claude Code. Читает твои транскрипты из `~/.claude/projects/*.jsonl`, считает стоимость по официальным тарифам Anthropic и показывает разбивку: по дням, по скиллам, по сабагентам, по сессиям.
 
-100% local — nothing leaves your machine. No API keys, no auth, no telemetry.
+Всё работает локально — никакие данные никуда не уходят. Никаких API-ключей, авторизации, телеметрии.
 
-## Requirements
+## Что нужно
 
-- macOS or Linux
-- Python 3.8+
-- Claude Code installed and used at least once (so `~/.claude/projects/` exists)
+- macOS или Linux (на Windows работает через WSL)
+- Python 3.8+ (на маке уже стоит — проверка: `python3 --version`)
+- Установленный Claude Code, которым ты хоть раз пользовался — неважно, через терминал или десктопное приложение. Главное чтобы появилась папка `~/.claude/projects/`.
 
-## Install
+## Установка
 
-1. Unzip this folder anywhere, e.g. `~/cc-usage-dashboard/`
-2. Make the launcher executable:
-   ```
-   chmod +x open.sh
-   ```
-
-## Run
+Открой Терминал (на маке: Cmd+Space → «Terminal») и вставь:
 
 ```
-./open.sh           # last 30 days
-./open.sh 7         # last 7 days
-./open.sh 365       # last year
+git clone https://github.com/Glebtum/cc-usage-dashboard.git
+cd cc-usage-dashboard
+chmod +x open.sh
 ```
 
-The script:
-1. Scans `~/.claude/projects/` and writes `data.json`
-2. Starts a local HTTP server on `http://localhost:8765`
-3. Opens it in your browser
+Если `git` не установлен, можно скачать архив кнопкой **Code → Download ZIP** на странице репо, распаковать и в Терминале сделать `cd` в эту папку.
 
-To stop the server: `kill $(lsof -ti:8765)` or just close your terminal.
+## Запуск
 
-## What you'll see
+```
+./open.sh           # последние 30 дней
+./open.sh 7         # последние 7 дней
+./open.sh 365       # за год
+```
 
-- **Total cost** for the period (computed from token counts × Anthropic published prices)
-- **Daily cost bars** — click a bar to filter the table to that day
-- **By skill** — which `/skill-name` skills consumed the most
-- **By subagent** — which Task() subagents consumed the most
-- **Sessions table** — every session with title, $, message count, skills/agents used
+Скрипт сам:
+1. Соберёт данные из `~/.claude/projects/` в файл `data.json`
+2. Поднимет локальный веб-сервер на `http://localhost:8765`
+3. Откроет дашборд в браузере
 
-## Notes
+Чтобы остановить — закрой Терминал или выполни `kill $(lsof -ti:8765)`.
 
-- Pricing is hardcoded (Opus 4.7 / Sonnet 4.6 / Haiku 4.5). Update `PRICES` dict in
-  `usage_breakdown.py` if Anthropic changes rates or you use other models.
-- Cost is an estimate based on token counts in transcripts; it should match your
-  Anthropic console within a few percent.
-- Skills are detected from `/command-name` markers and skill paths in the first
-  user messages of each session.
+## Что увидишь
+
+- **Total cost** — сколько потратил за период (рассчитывается из токенов × прайс Anthropic)
+- **Daily cost** — столбики по дням, можно кликнуть на день и отфильтровать таблицу сессий
+- **By skill** — какие `/скиллы` съели больше всего
+- **By subagent** — какие сабагенты (Task) съели больше всего
+- **Sessions** — таблица всех сессий: название, стоимость, количество сообщений, какие скиллы/агенты использовались
+
+## Если что-то пошло не так
+
+- **«python3: command not found»** — на маке поставь Xcode Command Line Tools: `xcode-select --install`. На Linux — `sudo apt install python3`.
+- **«Permission denied: ./open.sh»** — забыл `chmod +x open.sh`.
+- **Дашборд пустой / `total $0`** — значит в `~/.claude/projects/` нет транскриптов за выбранный период. Поработай с Claude Code и запусти заново. Проверить что папка есть: `ls ~/.claude/projects/`.
+- **Порт 8765 занят** — скрипт сам убивает старый процесс на этом порту, должно работать. Если нет — открой `open.sh` и поменяй `PORT=8765` на что-нибудь другое.
+
+## Заметки
+
+- Цены захардкожены (Opus 4.7 / Sonnet 4.6 / Haiku 4.5). Если Anthropic поменяет тарифы или ты используешь другие модели — поправь словарь `PRICES` в файле `usage_breakdown.py`.
+- Стоимость — оценка по токенам из транскриптов, должна сходиться с биллингом Anthropic в пределах нескольких процентов.
+- Скиллы определяются по `/command-name` и путям к скиллам в первых сообщениях сессии — иногда могут не распознаться, тогда сессия попадёт в `(no-skill)`.
